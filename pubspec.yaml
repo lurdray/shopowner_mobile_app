@@ -1,0 +1,129 @@
+name: shopowner_mobile_app
+description: "ShopOwner - Manage your shop on the go."
+
+publish_to: "none"
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.3.3 <4.0.0"
+
+dependencies:
+  animated_bottom_navigation_bar: ^1.3.3
+  badges: ^3.1.2
+  cached_network_image: ^3.4.1
+  carousel_slider_plus: ^7.0.2
+  cupertino_icons: ^1.0.8
+  dio: ^5.7.0
+  flutter:
+    sdk: flutter
+  flutter_bloc: ^8.1.6
+  flutter_screenutil: ^5.9.3
+  flutter_svg: ^2.0.10+1
+  flutter_animate: ^4.5.2
+  gap: ^3.0.1
+  hydrated_bloc: ^9.1.5
+  image_picker: ^1.1.2
+  intl: ^0.19.0
+  loading_animation_widget: ^1.3.0
+  logger: ^2.5.0
+  path_provider: ^2.1.5
+  photo_view: ^0.15.0
+  smooth_page_indicator: ^1.2.0+3
+  substring_highlight: ^1.0.33
+  transitioned_indexed_stack: ^1.0.2
+  url_launcher: ^6.3.1
+  animated_text_kit: ^4.2.2
+  double_back_to_close: ^2.0.0
+  dartx: ^1.2.0
+  shimmer: ^3.0.0
+  pin_code_fields: ^8.0.1
+  fl_chart: ^0.68.0
+  percent_indicator: ^4.2.3
+  flutter_staggered_grid_view: ^0.7.0
+  intersperse: ^2.0.0
+  dropdown_button2: ^2.3.9
+  marquee_widget: ^1.2.0
+
+dev_dependencies:
+  flutter_lints: ^4.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/
+    - assets/images/
+    - assets/icons/
+  fonts:
+    - family: Quicksand
+      fonts:
+        - asset: assets/fonts/Quicksand.ttf
+    - family: Moul
+      fonts:
+        - asset: assets/fonts/Moul-Regular.ttf
+    - family: NunitoSans
+      fonts:
+        - asset: assets/fonts/NunitoSans_7pt-Black.ttf
+          weight: 900
+          style: normal
+        - asset: assets/fonts/NunitoSans_7pt-BlackItalic.ttf
+          weight: 900
+          style: italic
+        - asset: assets/fonts/NunitoSans_7pt-Bold.ttf
+          weight: 700
+          style: normal
+        - asset: assets/fonts/NunitoSans_7pt-BoldItalic.ttf
+          weight: 700
+          style: italic
+        - asset: assets/fonts/NunitoSans_7pt-ExtraBold.ttf
+          weight: 800
+          style: normal
+        - asset: assets/fonts/NunitoSans_7pt-ExtraBoldItalic.ttf
+          weight: 800
+          style: italic
+        - asset: assets/fonts/NunitoSans_7pt-ExtraLight.ttf
+          weight: 200
+          style: normal
+        - asset: assets/fonts/NunitoSans_7pt-ExtraLightItalic.ttf
+          weight: 200
+          style: italic
+        - asset: assets/fonts/NunitoSans_7pt-Italic.ttf
+          weight: 400
+          style: italic
+        - asset: assets/fonts/NunitoSans_7pt-Light.ttf
+          weight: 300
+          style: normal
+        - asset: assets/fonts/NunitoSans_7pt-LightItalic.ttf
+          weight: 300
+          style: italic
+        - asset: assets/fonts/NunitoSans_7pt-Medium.ttf
+          weight: 500
+          style: normal
+        - asset: assets/fonts/NunitoSans_7pt-MediumItalic.ttf
+          weight: 500
+          style: italic
+        - asset: assets/fonts/NunitoSans_7pt-Regular.ttf
+          weight: 400
+          style: normal
+        - asset: assets/fonts/NunitoSans_7pt-SemiBold.ttf
+          weight: 600
+          style: normal
+        - asset: assets/fonts/NunitoSans_7pt-SemiBoldItalic.ttf
+          weight: 600
+          style: italic
+    - family: Philosopher
+      fonts:
+        - asset: assets/fonts/Philosopher-Bold.ttf
+          weight: 700
+          style: normal
+        - asset: assets/fonts/Philosopher-BoldItalic.ttf
+          weight: 700
+          style: italic
+        - asset: assets/fonts/Philosopher-Italic.ttf
+          weight: 400
+          style: italic
+        - asset: assets/fonts/Philosopher-Regular.ttf
+          weight: 400
+          style: normal
