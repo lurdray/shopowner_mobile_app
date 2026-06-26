@@ -1,0 +1,101 @@
+name: Build AAB (Play Store)
+
+# Manually triggered — produces a release-signed Android App Bundle (.aab)
+# to upload to Google Play. Requires these repository secrets:
+#   ANDROID_KEYSTORE_BASE64   - base64 of your upload-keystore.jks
+#   ANDROID_KEYSTORE_PASSWORD - store password
+#   ANDROID_KEY_PASSWORD      - key password
+#   ANDROID_KEY_ALIAS         - key alias (e.g. upload)
+on:
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: "Version name (e.g. 1.0.0)"
+        required: true
+        default: "1.0.0"
+      build_number:
+        description: "Version code — MUST be higher than the last one on Play"
+        required: true
+        default: "2"
+
+jobs:
+  build:
+    name: Build release AAB
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Fail if signing secrets are missing
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KS" ]; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 secret is not set. Add the signing secrets first (see DEPLOYMENT notes)."
+            exit 1
+          fi
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.27.4"
+          channel: stable
+          cache: true
+
+      - name: Decode keystore
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
+
+      - name: Write key.properties
+        run: |
+          cat > android/key.properties <<EOF
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          storeFile=upload-keystore.jks
+          EOF
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build signed AAB
+        run: |
+          flutter build appbundle --release \
+            --build-name=${{ github.event.inputs.version_name }} \
+            --build-number=${{ github.event.inputs.build_number }} \
+            --no-tree-shake-icons
+
+      - name: Rename AAB
+        run: |
+          mkdir -p output
+          cp build/app/outputs/bundle/release/app-release.aab \
+             output/ShopOwner-${{ github.event.inputs.version_name }}-${{ github.event.inputs.build_number }}.aab
+
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ShopOwner-AAB
+          path: output/*.aab
+          retention-days: 90
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: aab-${{ github.event.inputs.version_name }}-${{ github.event.inputs.build_number }}
+          name: "ShopOwner ${{ github.event.inputs.version_name }} (AAB ${{ github.event.inputs.build_number }})"
+          body: |
+            ## ShopOwner — Play Store App Bundle
+
+            Release-signed `.aab` for upload to Google Play Console.
+            versionName ${{ github.event.inputs.version_name }} · versionCode ${{ github.event.inputs.build_number }}
+          files: output/*.aab
+          draft: false
