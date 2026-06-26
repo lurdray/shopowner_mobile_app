@@ -1,17 +1,64 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gap/gap.dart';
 import 'package:shopowner_mobile_app/core/app_assets.dart';
 import 'package:shopowner_mobile_app/core/extensions/context_extension.dart';
 import 'package:shopowner_mobile_app/core/theme/app_colors.dart';
 import 'package:shopowner_mobile_app/core/utils/app_funcs.dart';
 import 'package:shopowner_mobile_app/core/utils/font_family.dart';
+import 'package:shopowner_mobile_app/core/utils/generics.dart';
 import 'package:shopowner_mobile_app/core/widgets/app_text.dart';
 import 'package:shopowner_mobile_app/core/widgets/nice_button.dart';
+import 'package:shopowner_mobile_app/data/models/order_model.dart';
+import 'package:shopowner_mobile_app/presentation/orders/cubit/orders_cubit.dart';
 
-class OrderDetailPage extends StatelessWidget {
-  final dynamic order;
+class OrderDetailPage extends StatefulWidget {
+  final OrderModel order;
 
   const OrderDetailPage({super.key, required this.order});
+
+  @override
+  State<OrderDetailPage> createState() => _OrderDetailPageState();
+}
+
+class _OrderDetailPageState extends State<OrderDetailPage> {
+  late OrderModel order;
+  bool _loading = true;
+  bool _updating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    order = widget.order;
+    _loadDetail();
+  }
+
+  Future<void> _loadDetail() async {
+    try {
+      final full = await context.read<OrdersCubit>().detail(widget.order.pk);
+      if (!mounted) return;
+      setState(() {
+        order = full;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _setStatus(String status, {Color? bgColor}) async {
+    setState(() => _updating = true);
+    final ok = await context.read<OrdersCubit>().updateStatus(order.pk, status);
+    if (!mounted) return;
+    setState(() => _updating = false);
+    showScaffoldSnackBar(
+      context,
+      text: ok ? 'Order marked as $status' : 'Could not update order',
+      bgColor: ok ? bgColor : AppColors.red,
+    );
+    if (ok) context.pop();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -100,8 +147,10 @@ class OrderDetailPage extends StatelessWidget {
                             fontWeight: FontWeight.w800,
                             fontClr: AppColors.primaryClr,
                           ),
-                          const AppText(
-                            text: 'Lagos, Nigeria',
+                          AppText(
+                            text: order.customerLocation?.isNotEmpty == true
+                                ? order.customerLocation!
+                                : 'Lagos, Nigeria',
                             fontSize: 12,
                             fontClr: AppColors.grey700,
                           ),
@@ -114,13 +163,12 @@ class OrderDetailPage extends StatelessWidget {
                 _buildSectionTitle('Order Items'),
                 const Gap(8),
                 _buildCard(
-                  child: Column(
-                    children: [
-                      _buildOrderItem('Phone Case x2', '₦9,000'),
-                      const Divider(height: 20),
-                      _buildOrderItem('USB Cable x1', '₦4,000'),
-                    ],
-                  ),
+                  child: _loading
+                      ? Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: loadingCircle(28),
+                        )
+                      : Column(children: _buildItemRows()),
                 ),
                 const Gap(14),
                 _buildSectionTitle('Payment Summary'),
@@ -128,61 +176,26 @@ class OrderDetailPage extends StatelessWidget {
                 _buildCard(
                   child: Column(
                     children: [
-                      _buildSummaryRow('Subtotal', '₦13,000'),
+                      _buildSummaryRow(
+                        'Subtotal',
+                        '₦${(order.subtotal ?? order.total).toStringAsFixed(0)}',
+                      ),
                       const Gap(6),
-                      _buildSummaryRow('Delivery Fee', '₦0'),
+                      _buildSummaryRow(
+                        'Delivery Fee',
+                        '₦${(order.deliveryFee ?? 0).toStringAsFixed(0)}',
+                      ),
                       const Divider(height: 16),
-                      _buildSummaryRow('Total', '₦13,000', isBold: true),
+                      _buildSummaryRow(
+                        'Total',
+                        '₦${order.total.toStringAsFixed(0)}',
+                        isBold: true,
+                      ),
                     ],
                   ),
                 ),
                 const Gap(24),
-                if (order.status == 'Pending') ...[
-                  NiceButton(
-                    padding: EdgeInsets.zero,
-                    btnText: 'Mark as Processing',
-                    borderRadius: BorderRadius.circular(14),
-                    canContinue: true,
-                    onPressed: () {
-                      showScaffoldSnackBar(
-                        context,
-                        text: 'Order marked as Processing',
-                      );
-                      context.pop();
-                    },
-                  ),
-                  const Gap(10),
-                  NiceButton(
-                    padding: EdgeInsets.zero,
-                    btnText: 'Cancel Order',
-                    borderRadius: BorderRadius.circular(14),
-                    canContinue: true,
-                    loadingClr: AppColors.red,
-                    onPressed: () {
-                      showScaffoldSnackBar(
-                        context,
-                        text: 'Order cancelled',
-                        bgColor: AppColors.red,
-                      );
-                      context.pop();
-                    },
-                  ),
-                ] else if (order.status == 'Processing') ...[
-                  NiceButton(
-                    padding: EdgeInsets.zero,
-                    btnText: 'Mark as Delivered',
-                    borderRadius: BorderRadius.circular(14),
-                    canContinue: true,
-                    onPressed: () {
-                      showScaffoldSnackBar(
-                        context,
-                        text: 'Order marked as Delivered!',
-                        bgColor: AppColors.success,
-                      );
-                      context.pop();
-                    },
-                  ),
-                ],
+                ..._buildActions(),
                 const Gap(20),
               ],
             ),
@@ -190,6 +203,65 @@ class OrderDetailPage extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  List<Widget> _buildItemRows() {
+    if (order.itemList.isEmpty) {
+      return [
+        AppText(
+          text: order.items.isNotEmpty ? order.items : 'No item details',
+          fontSize: 13,
+          fontClr: AppColors.grey700,
+        ),
+      ];
+    }
+    final rows = <Widget>[];
+    for (var i = 0; i < order.itemList.length; i++) {
+      final item = order.itemList[i];
+      rows.add(_buildOrderItem(
+        '${item.name} x${item.quantity}',
+        '₦${item.lineTotal.toStringAsFixed(0)}',
+      ));
+      if (i != order.itemList.length - 1) {
+        rows.add(const Divider(height: 20));
+      }
+    }
+    return rows;
+  }
+
+  List<Widget> _buildActions() {
+    if (_updating) return [loadingCircle(28)];
+    if (order.status == 'Pending') {
+      return [
+        NiceButton(
+          padding: EdgeInsets.zero,
+          btnText: 'Mark as Processing',
+          borderRadius: BorderRadius.circular(14),
+          canContinue: true,
+          onPressed: () => _setStatus('Processing'),
+        ),
+        const Gap(10),
+        NiceButton(
+          padding: EdgeInsets.zero,
+          btnText: 'Cancel Order',
+          borderRadius: BorderRadius.circular(14),
+          canContinue: true,
+          loadingClr: AppColors.red,
+          onPressed: () => _setStatus('Cancelled', bgColor: AppColors.red),
+        ),
+      ];
+    } else if (order.status == 'Processing') {
+      return [
+        NiceButton(
+          padding: EdgeInsets.zero,
+          btnText: 'Mark as Delivered',
+          borderRadius: BorderRadius.circular(14),
+          canContinue: true,
+          onPressed: () => _setStatus('Delivered', bgColor: AppColors.success),
+        ),
+      ];
+    }
+    return [];
   }
 
   Widget _buildCard({required Widget child}) {

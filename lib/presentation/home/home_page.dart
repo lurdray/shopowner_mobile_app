@@ -7,9 +7,12 @@ import 'package:shopowner_mobile_app/core/theme/app_colors.dart';
 import 'package:shopowner_mobile_app/core/utils/app_funcs.dart';
 import 'package:shopowner_mobile_app/presentation/auth/cubit/auth_cubit.dart';
 import 'package:shopowner_mobile_app/presentation/auth/state/auth_state.dart';
+import 'package:shopowner_mobile_app/presentation/dashboard/cubit/dashboard_cubit.dart';
 import 'package:shopowner_mobile_app/presentation/dashboard/dashboard_page.dart';
 import 'package:shopowner_mobile_app/presentation/home/cubit/home_cubit.dart';
+import 'package:shopowner_mobile_app/presentation/orders/cubit/orders_cubit.dart';
 import 'package:shopowner_mobile_app/presentation/orders/orders_page.dart';
+import 'package:shopowner_mobile_app/presentation/products/cubit/products_cubit.dart';
 import 'package:shopowner_mobile_app/presentation/products/products_page.dart';
 import 'package:shopowner_mobile_app/presentation/profile/profile_page.dart';
 import 'package:transitioned_indexed_stack/transitioned_indexed_stack.dart';
@@ -23,6 +26,17 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _activeIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Load shop data once the owner is in the app.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<DashboardCubit>().load();
+      context.read<ProductsCubit>().load();
+      context.read<OrdersCubit>().load();
+    });
+  }
 
   final List<Widget> _pages = const [
     DashboardPage(),

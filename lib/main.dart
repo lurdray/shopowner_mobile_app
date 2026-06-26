@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:hydrated_bloc/hydrated_bloc.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shopowner_mobile_app/app_bloc_providers.dart';
 import 'package:shopowner_mobile_app/core/app_assets.dart';
 import 'package:shopowner_mobile_app/core/theme/theme_config.dart';
@@ -8,6 +10,14 @@ import 'package:shopowner_mobile_app/presentation/splash/splash_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Persist auth (token + shop) across restarts so the user stays signed in.
+  HydratedBloc.storage = await HydratedStorage.build(
+    storageDirectory: HydratedStorageDirectory(
+      (await getApplicationDocumentsDirectory()).path,
+    ),
+  );
+
   runApp(
     MultiBlocProvider(
       providers: AppBlocProviders.blocProviders,

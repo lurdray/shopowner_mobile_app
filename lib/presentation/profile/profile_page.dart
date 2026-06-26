@@ -11,6 +11,7 @@ import 'package:shopowner_mobile_app/core/widgets/app_text.dart';
 import 'package:shopowner_mobile_app/core/widgets/custom_image_view.dart';
 import 'package:shopowner_mobile_app/presentation/auth/cubit/auth_cubit.dart';
 import 'package:shopowner_mobile_app/presentation/auth/state/auth_state.dart';
+import 'package:shopowner_mobile_app/presentation/dashboard/cubit/dashboard_cubit.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -33,7 +34,7 @@ class ProfilePage extends StatelessWidget {
               children: [
                 _buildProfileHeader(auth),
                 const Gap(24),
-                _buildShopInfoCard(auth),
+                _buildShopInfoCard(context),
                 const Gap(20),
                 _buildSectionTitle('Account Settings'),
                 const Gap(10),
@@ -172,40 +173,47 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _buildShopInfoCard(dynamic auth) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.primaryClr,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _buildShopStat(
-              '34',
-              'Products',
-              Icons.inventory_2_outlined,
-            ),
+  Widget _buildShopInfoCard(BuildContext context) {
+    return BlocBuilder<DashboardCubit, DashboardState>(
+      builder: (context, state) {
+        final data = state.data;
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.primaryClr,
+            borderRadius: BorderRadius.circular(20),
           ),
-          Container(width: 1, height: 50, color: AppColors.secClr.withOpacity(.3)),
-          Expanded(
-            child: _buildShopStat(
-              '86',
-              'Orders',
-              Icons.shopping_bag_outlined,
-            ),
+          child: Row(
+            children: [
+              Expanded(
+                child: _buildShopStat(
+                  '${data?.products ?? 0}',
+                  'Products',
+                  Icons.inventory_2_outlined,
+                ),
+              ),
+              Container(
+                  width: 1, height: 50, color: AppColors.secClr.withOpacity(.3)),
+              Expanded(
+                child: _buildShopStat(
+                  '${data?.orders ?? 0}',
+                  'Orders',
+                  Icons.shopping_bag_outlined,
+                ),
+              ),
+              Container(
+                  width: 1, height: 50, color: AppColors.secClr.withOpacity(.3)),
+              Expanded(
+                child: _buildShopStat(
+                  '${data?.customers ?? 0}',
+                  'Customers',
+                  Icons.people_outline,
+                ),
+              ),
+            ],
           ),
-          Container(width: 1, height: 50, color: AppColors.secClr.withOpacity(.3)),
-          Expanded(
-            child: _buildShopStat(
-              '4.8★',
-              'Rating',
-              Icons.star_outline,
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 

@@ -5,12 +5,15 @@ import 'package:shopowner_mobile_app/core/app_assets.dart';
 import 'package:shopowner_mobile_app/core/app_const.dart';
 import 'package:shopowner_mobile_app/core/extensions/general_extension.dart';
 import 'package:shopowner_mobile_app/core/theme/app_colors.dart';
-import 'package:shopowner_mobile_app/core/utils/app_funcs.dart';
 import 'package:shopowner_mobile_app/core/utils/font_family.dart';
+import 'package:shopowner_mobile_app/core/utils/generics.dart';
 import 'package:shopowner_mobile_app/core/widgets/app_text.dart';
 import 'package:shopowner_mobile_app/core/widgets/custom_image_view.dart';
+import 'package:shopowner_mobile_app/data/models/dashboard_model.dart';
+import 'package:shopowner_mobile_app/data/models/order_model.dart';
 import 'package:shopowner_mobile_app/presentation/auth/cubit/auth_cubit.dart';
 import 'package:shopowner_mobile_app/presentation/auth/state/auth_state.dart';
+import 'package:shopowner_mobile_app/presentation/dashboard/cubit/dashboard_cubit.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -28,26 +31,37 @@ class DashboardPage extends StatelessWidget {
             ),
           ),
           child: SafeArea(
-            child: ListView(
-              padding: const EdgeInsets.all(20),
-              children: [
-                _buildHeader(shopName, authS),
-                const Gap(20),
-                _buildStatCards(),
-                const Gap(20),
-                _buildSectionTitle('Recent Orders'),
-                const Gap(12),
-                _buildRecentOrders(),
-                const Gap(20),
-                _buildSectionTitle('Quick Actions'),
-                const Gap(12),
-                _buildQuickActions(context),
-                const Gap(20),
-                _buildSectionTitle('Revenue Overview'),
-                const Gap(12),
-                _buildRevenueCard(),
-                const Gap(20),
-              ],
+            child: BlocBuilder<DashboardCubit, DashboardState>(
+              builder: (context, state) {
+                if (state.isLoading && state.data == null) {
+                  return loadingCircle();
+                }
+                final data = state.data;
+                return RefreshIndicator(
+                  onRefresh: () => context.read<DashboardCubit>().load(),
+                  child: ListView(
+                    padding: const EdgeInsets.all(20),
+                    children: [
+                      _buildHeader(shopName, authS),
+                      const Gap(20),
+                      _buildStatCards(data),
+                      const Gap(20),
+                      _buildSectionTitle('Recent Orders'),
+                      const Gap(12),
+                      _buildRecentOrders(data?.recentOrders ?? const []),
+                      const Gap(20),
+                      _buildSectionTitle('Quick Actions'),
+                      const Gap(12),
+                      _buildQuickActions(context),
+                      const Gap(20),
+                      _buildSectionTitle('Revenue Overview'),
+                      const Gap(12),
+                      _buildRevenueCard(data),
+                      const Gap(20),
+                    ],
+                  ),
+                );
+              },
             ),
           ),
         );
@@ -56,6 +70,7 @@ class DashboardPage extends StatelessWidget {
   }
 
   Widget _buildHeader(String shopName, AuthState authS) {
+    final logo = authS.authModel?.shopLogo;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -81,7 +96,9 @@ class DashboardPage extends StatelessWidget {
           shadowColor: AppColors.primaryClr,
           borderRadius: BorderRadius.circular(40),
           child: CustomImageView(
-            imagePath: AppAssets.ASSETS_IMAGES_APP_LOGO_PNG,
+            imagePath: (logo != null && logo.isNotEmpty)
+                ? logo
+                : AppAssets.ASSETS_IMAGES_APP_LOGO_PNG,
             height: 46,
             width: 46,
             radius: BorderRadius.circular(40),
@@ -91,30 +108,30 @@ class DashboardPage extends StatelessWidget {
     );
   }
 
-  Widget _buildStatCards() {
+  Widget _buildStatCards(DashboardModel? data) {
     final stats = [
       _StatData(
         label: 'Total Sales',
-        value: 1240000.toMoneyFormat(),
+        value: (data?.totalSales ?? 0).toMoneyFormat(),
         prefix: '₦',
         icon: Icons.trending_up,
         color: AppColors.success,
       ),
       _StatData(
         label: 'Orders',
-        value: '86',
+        value: '${data?.orders ?? 0}',
         icon: Icons.shopping_bag_outlined,
         color: AppColors.info,
       ),
       _StatData(
         label: 'Products',
-        value: '34',
+        value: '${data?.products ?? 0}',
         icon: Icons.inventory_2_outlined,
         color: AppColors.warning,
       ),
       _StatData(
         label: 'Customers',
-        value: '512',
+        value: '${data?.customers ?? 0}',
         icon: Icons.people_outline,
         color: AppColors.primaryClr,
       ),
@@ -140,13 +157,21 @@ class DashboardPage extends StatelessWidget {
     );
   }
 
-  Widget _buildRecentOrders() {
-    final orders = [
-      _OrderData(id: '#ORD-001', item: '2x Phone Cases', amount: '₦8,500', status: 'Delivered'),
-      _OrderData(id: '#ORD-002', item: '1x Smart Watch', amount: '₦45,000', status: 'Pending'),
-      _OrderData(id: '#ORD-003', item: '3x Earbuds', amount: '₦12,000', status: 'Processing'),
-    ];
-
+  Widget _buildRecentOrders(List<OrderModel> orders) {
+    if (orders.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(.85),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: AppText(
+          text: 'No orders yet',
+          fontSize: 13,
+          fontClr: AppColors.grey700,
+        ),
+      );
+    }
     return Column(
       children: orders.map((o) => _OrderCard(order: o)).toList(),
     );
@@ -162,15 +187,14 @@ class DashboardPage extends StatelessWidget {
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: actions
-          .map(
-            (a) => _QuickActionButton(action: a),
-          )
-          .toList(),
+      children: actions.map((a) => _QuickActionButton(action: a)).toList(),
     );
   }
 
-  Widget _buildRevenueCard() {
+  Widget _buildRevenueCard(DashboardModel? data) {
+    final thisMonth = data?.thisMonth ?? 0;
+    final change = data?.changePct ?? 0;
+    final positive = change >= 0;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -187,8 +211,8 @@ class DashboardPage extends StatelessWidget {
             fontFamily: FontFamily.philosopher,
           ),
           const Gap(4),
-          const AppText(
-            text: '₦1,240,000',
+          AppText(
+            text: '₦${thisMonth.toMoneyFormat()}',
             fontSize: 28,
             fontWeight: FontWeight.w900,
             fontClr: Colors.white,
@@ -196,26 +220,34 @@ class DashboardPage extends StatelessWidget {
           const Gap(8),
           Row(
             children: [
-              const Icon(Icons.arrow_upward, color: AppColors.success, size: 16),
+              Icon(
+                positive ? Icons.arrow_upward : Icons.arrow_downward,
+                color: positive ? AppColors.success : AppColors.red,
+                size: 16,
+              ),
               const Gap(4),
-              const AppText(
-                text: '+12.5% vs last month',
+              AppText(
+                text:
+                    '${positive ? '+' : ''}${change.toStringAsFixed(1)}% vs last month',
                 fontSize: 12,
-                fontClr: AppColors.success,
+                fontClr: positive ? AppColors.success : AppColors.red,
                 fontWeight: FontWeight.w700,
               ),
             ],
           ),
           const Gap(16),
-          _buildMiniBarChart(),
+          _buildMiniBarChart(data?.weekly ?? const []),
         ],
       ),
     );
   }
 
-  Widget _buildMiniBarChart() {
-    final List<double> data = [0.4, 0.6, 0.5, 0.8, 0.7, 0.9, 1.0];
-    final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  Widget _buildMiniBarChart(List<RevenueBar> weekly) {
+    if (weekly.isEmpty) {
+      return const SizedBox(height: 80);
+    }
+    final maxAmount =
+        weekly.map((e) => e.amount).fold<double>(0, (a, b) => a > b ? a : b);
 
     return SizedBox(
       height: 80,
@@ -223,29 +255,33 @@ class DashboardPage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: List.generate(
-          data.length,
-          (i) => Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              Container(
-                width: 28,
-                height: 60 * data[i],
-                decoration: BoxDecoration(
-                  color: AppColors.secClr.withOpacity(i == data.length - 1 ? 1 : 0.5),
-                  borderRadius: BorderRadius.circular(4),
+          weekly.length,
+          (i) {
+            final ratio = maxAmount <= 0 ? 0.0 : weekly[i].amount / maxAmount;
+            return Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Container(
+                  width: 28,
+                  height: 6 + 54 * ratio,
+                  decoration: BoxDecoration(
+                    color: AppColors.secClr
+                        .withOpacity(i == weekly.length - 1 ? 1 : 0.5),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
                 ),
-              ),
-              const Gap(4),
-              Text(
-                days[i],
-                style: const TextStyle(
-                  color: AppColors.secClr,
-                  fontSize: 9,
-                  fontFamily: FontFamily.nunitoSans,
+                const Gap(4),
+                Text(
+                  weekly[i].label,
+                  style: const TextStyle(
+                    color: AppColors.secClr,
+                    fontSize: 9,
+                    fontFamily: FontFamily.nunitoSans,
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -317,18 +353,8 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-class _OrderData {
-  final String id, item, amount, status;
-  _OrderData({
-    required this.id,
-    required this.item,
-    required this.amount,
-    required this.status,
-  });
-}
-
 class _OrderCard extends StatelessWidget {
-  final _OrderData order;
+  final OrderModel order;
   const _OrderCard({required this.order});
 
   Color get _statusColor {
@@ -365,9 +391,10 @@ class _OrderCard extends StatelessWidget {
                 ),
                 const Gap(2),
                 AppText(
-                  text: order.item,
+                  text: order.items.isNotEmpty ? order.items : order.customer,
                   fontSize: 12,
                   fontClr: AppColors.grey700,
+                  maxLines: 1,
                 ),
               ],
             ),
@@ -376,7 +403,7 @@ class _OrderCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               AppText(
-                text: order.amount,
+                text: '₦${order.total.toStringAsFixed(0)}',
                 fontSize: 13,
                 fontWeight: FontWeight.w900,
                 fontClr: AppColors.primaryClr,

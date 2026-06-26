@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gap/gap.dart';
 import 'package:shopowner_mobile_app/core/app_assets.dart';
 import 'package:shopowner_mobile_app/core/extensions/context_extension.dart';
@@ -7,6 +8,7 @@ import 'package:shopowner_mobile_app/core/utils/app_funcs.dart';
 import 'package:shopowner_mobile_app/core/widgets/app_text.dart';
 import 'package:shopowner_mobile_app/core/widgets/custom_text_field.dart';
 import 'package:shopowner_mobile_app/core/widgets/nice_button.dart';
+import 'package:shopowner_mobile_app/presentation/products/cubit/products_cubit.dart';
 
 class AddProductPage extends StatefulWidget {
   const AddProductPage({super.key});
@@ -22,6 +24,7 @@ class _AddProductPageState extends State<AddProductPage> {
   final stockCtr = TextEditingController();
   final descCtr = TextEditingController();
   String? selectedCategory;
+  bool _saving = false;
 
   final List<String> categories = [
     'Electronics', 'Fashion', 'Food & Grocery', 'Health & Beauty',
@@ -209,16 +212,8 @@ class _AddProductPageState extends State<AddProductPage> {
                     btnText: 'Save Product',
                     borderRadius: BorderRadius.circular(14),
                     canContinue: true,
-                    onPressed: () {
-                      removeKeyboard();
-                      if (formKey.currentState!.validate()) {
-                        showScaffoldSnackBar(
-                          context,
-                          text: 'Product added successfully!',
-                        );
-                        context.pop();
-                      }
-                    },
+                    isLoading: _saving,
+                    onPressed: () => _save(context),
                   ),
                   const Gap(20),
                 ],
@@ -228,6 +223,33 @@ class _AddProductPageState extends State<AddProductPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _save(BuildContext context) async {
+    removeKeyboard();
+    if (!formKey.currentState!.validate()) return;
+
+    setState(() => _saving = true);
+    final ok = await context.read<ProductsCubit>().addProduct(
+          name: nameCtr.text.trim(),
+          price: double.tryParse(priceCtr.text.trim()) ?? 0,
+          stock: int.tryParse(stockCtr.text.trim()) ?? 0,
+          category: selectedCategory ?? '',
+          description: descCtr.text.trim(),
+        );
+    if (!mounted) return;
+    setState(() => _saving = false);
+
+    if (ok) {
+      showScaffoldSnackBar(context, text: 'Product added successfully!');
+      context.pop();
+    } else {
+      showScaffoldSnackBar(
+        context,
+        text: 'Could not add product. Please try again.',
+        bgColor: AppColors.red,
+      );
+    }
   }
 
   Widget _buildLabel(String text) {
