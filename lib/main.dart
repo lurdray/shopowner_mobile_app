@@ -13,9 +13,7 @@ Future<void> main() async {
 
   // Persist auth (token + shop) across restarts so the user stays signed in.
   HydratedBloc.storage = await HydratedStorage.build(
-    storageDirectory: HydratedStorageDirectory(
-      (await getApplicationDocumentsDirectory()).path,
-    ),
+    storageDirectory: await getApplicationDocumentsDirectory(),
   );
 
   runApp(
