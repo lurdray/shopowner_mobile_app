@@ -67,24 +67,33 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
-      - name: Build signed AAB
+      - name: Build signed AAB (for Play Store)
         run: |
           flutter build appbundle --release \
             --build-name=${{ github.event.inputs.version_name }} \
             --build-number=${{ github.event.inputs.build_number }} \
             --no-tree-shake-icons
 
-      - name: Rename AAB
+      - name: Build signed APK (for sideloading / testing)
+        run: |
+          flutter build apk --release \
+            --build-name=${{ github.event.inputs.version_name }} \
+            --build-number=${{ github.event.inputs.build_number }} \
+            --no-tree-shake-icons
+
+      - name: Collect outputs
         run: |
           mkdir -p output
-          cp build/app/outputs/bundle/release/app-release.aab \
-             output/ShopOwner-${{ github.event.inputs.version_name }}-${{ github.event.inputs.build_number }}.aab
+          V=${{ github.event.inputs.version_name }}-${{ github.event.inputs.build_number }}
+          cp build/app/outputs/bundle/release/app-release.aab "output/ShopOwner-$V.aab"
+          cp build/app/outputs/flutter-apk/app-release.apk "output/ShopOwner-$V-release.apk"
+          ls -la output
 
-      - name: Upload AAB artifact
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ShopOwner-AAB
-          path: output/*.aab
+          name: ShopOwner-release
+          path: output/*
           retention-days: 90
 
       - name: Create GitHub Release
@@ -93,9 +102,12 @@ jobs:
           tag_name: aab-${{ github.event.inputs.version_name }}-${{ github.event.inputs.build_number }}
           name: "ShopOwner ${{ github.event.inputs.version_name }} (AAB ${{ github.event.inputs.build_number }})"
           body: |
-            ## ShopOwner — Play Store App Bundle
+            ## ShopOwner — release build
 
-            Release-signed `.aab` for upload to Google Play Console.
+            - `.aab` → upload to Google Play Console
+            - `-release.apk` → sideload to test the exact build that goes to Play
+
+            Release-signed with the upload key.
             versionName ${{ github.event.inputs.version_name }} · versionCode ${{ github.event.inputs.build_number }}
-          files: output/*.aab
+          files: output/*
           draft: false
